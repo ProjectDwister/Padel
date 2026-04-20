@@ -45,9 +45,6 @@
     .wrap {
       position: relative;
       z-index: 1;
-    }
-
-    .wrap {
       max-width: 1440px;
       margin: auto;
       padding: 24px;
@@ -129,11 +126,16 @@
       text-transform: uppercase;
       letter-spacing: 0.03em;
       text-align: center;
-      backdrop-filter: blur(6px);
+      backdrop-filter: blur(4px);
     }
 
     tr:hover td {
       background: rgba(255, 255, 255, 0.025);
+    }
+
+    tr.is-selected td {
+      background: rgba(120, 224, 143, 0.22);
+      box-shadow: inset 0 0 0 1px rgba(120, 224, 143, 0.34);
     }
 
     .loading, .empty {
@@ -155,11 +157,159 @@
     th.court-col {
       text-align: center;
     }
+
+    .calendar-wrap {
+      margin: 24px auto 0;
+      width: fit-content;
+      max-width: 100%;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 14px;
+      background: rgba(10, 16, 32, 0.14);
+      backdrop-filter: blur(8px) saturate(120%);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+      padding: 16px;
+      position: sticky;
+      top: 16px;
+      z-index: 3;
+    }
+
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .calendar-title {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text);
+      text-align: center;
+      flex: 1;
+    }
+
+    .calendar-nav {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(26, 35, 69, 0.55);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      min-width: 44px;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(52px, 1fr));
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .calendar-weekday,
+    .calendar-day {
+      text-align: center;
+      border-radius: 10px;
+    }
+
+    .calendar-weekday {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 6px 0;
+    }
+
+    .calendar-day {
+      min-height: 56px;
+      padding: 8px 6px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.035);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .calendar-day.is-empty {
+      background: rgba(255,255,255,0.012);
+      border-color: rgba(255,255,255,0.04);
+    }
+
+    .calendar-day.is-booked {
+      background: rgba(120, 224, 143, 0.18);
+      border-color: rgba(120, 224, 143, 0.34);
+      box-shadow: 0 0 0 1px rgba(120, 224, 143, 0.18) inset;
+      cursor: pointer;
+    }
+
+    .calendar-day.is-selected {
+      background: rgba(110, 190, 255, 0.28);
+      border-color: rgba(110, 190, 255, 0.5);
+      box-shadow: 0 0 0 2px rgba(110, 190, 255, 0.24) inset;
+    }
+
+    .calendar-day.is-today {
+      outline: 2px solid rgba(255,255,255,0.28);
+      outline-offset: -2px;
+    }
+
+    .calendar-day.is-past {
+      background: rgba(255,255,255,0.02);
+      color: rgba(255,255,255,0.35);
+      border-color: rgba(255,255,255,0.05);
+      filter: grayscale(30%);
+    }
+
+    .calendar-day-num {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .calendar-day-meta {
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1;
+    }
+
+    .calendar-legend {
+      margin-top: 12px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .calendar-legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 4px;
+      background: rgba(120, 224, 143, 0.18);
+      border: 1px solid rgba(120, 224, 143, 0.34);
+      display: inline-block;
+    }
+
+    @media (max-width: 700px) {
+      .calendar-grid {
+        grid-template-columns: repeat(7, minmax(40px, 1fr));
+        gap: 6px;
+      }
+
+      .calendar-day {
+        min-height: 48px;
+        padding: 6px 4px;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-
     <div class="toolbar">
       <input id="searchInput" placeholder="Search players, day, date, duration, location, court..." />
       <select id="locationFilter"><option value="">All Locations</option></select>
@@ -202,6 +352,8 @@
     const refreshBtn = document.getElementById('refreshBtn');
 
     let data = [];
+    let calendarMonth = null;
+    let selectedBookingDate = '';
 
     function showNotice(message) {
       noticeEl.textContent = message;
@@ -300,6 +452,30 @@
       const iso = yyyy + '-' + mm.padStart(2, '0') + '-' + dd.padStart(2, '0') + 'T' + time + ':00';
       const date = new Date(iso);
       return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function parseDayMonthYear(value) {
+      const match = String(value || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (!match) {
+        return null;
+      }
+      return {
+        day: parseInt(match[1], 10),
+        month: parseInt(match[2], 10) - 1,
+        year: parseInt(match[3], 10)
+      };
+    }
+
+    function bookingKeyFromParts(year, month, day) {
+      return String(year) + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    }
+
+    function bookingKeyFromDateString(value) {
+      const parts = parseDayMonthYear(value);
+      if (!parts) {
+        return '';
+      }
+      return bookingKeyFromParts(parts.year, parts.month, parts.day);
     }
 
     function headerIndexMap(headers) {
@@ -450,6 +626,7 @@
     function buildTable(rows) {
       const wrapper = document.createElement('div');
       wrapper.className = 'table-wrap';
+      wrapper.id = 'schedule-table';
       const table = document.createElement('table');
       const thead = document.createElement('thead');
       const tbody = document.createElement('tbody');
@@ -474,6 +651,11 @@
 
       rows.forEach(function(item) {
         const tr = document.createElement('tr');
+        const bookingKey = bookingKeyFromDateString(item.date);
+        tr.dataset.bookingDate = bookingKey;
+        if (selectedBookingDate && bookingKey === selectedBookingDate) {
+          tr.classList.add('is-selected');
+        }
 
         const dayTd = document.createElement('td');
         dayTd.textContent = item.day || '';
@@ -517,6 +699,150 @@
       return wrapper;
     }
 
+    function getBookedDateCounts(rows) {
+      const counts = {};
+      rows.forEach(function(item) {
+        const key = bookingKeyFromDateString(item.date);
+        if (key) {
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      });
+      return counts;
+    }
+
+    function getCalendarAnchorMonth(rows) {
+      if (!rows.length) {
+        const now = new Date();
+        return { year: now.getFullYear(), month: now.getMonth() };
+      }
+      const sorted = rows
+        .map(function(item) { return parseDateValue(item.date, item.start); })
+        .filter(Boolean)
+        .sort(function(a, b) { return a.getTime() - b.getTime(); });
+      const anchor = sorted[0] || new Date();
+      return { year: anchor.getFullYear(), month: anchor.getMonth() };
+    }
+
+    function monthLabel(year, month) {
+      return new Date(year, month, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    }
+
+    function buildCalendar(rows) {
+      const bookedCounts = getBookedDateCounts(rows);
+      const anchor = calendarMonth || getCalendarAnchorMonth(rows);
+      const year = anchor.year;
+      const month = anchor.month;
+      const today = new Date();
+      const firstDay = new Date(year, month, 1);
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const firstWeekday = firstDay.getDay();
+      const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'calendar-wrap';
+
+      const header = document.createElement('div');
+      header.className = 'calendar-header';
+
+      const prevBtn = document.createElement('button');
+      prevBtn.type = 'button';
+      prevBtn.className = 'calendar-nav';
+      prevBtn.textContent = '‹';
+      prevBtn.addEventListener('click', function() {
+        calendarMonth = { year: month === 0 ? year - 1 : year, month: month === 0 ? 11 : month - 1 };
+        render();
+      });
+
+      const title = document.createElement('div');
+      title.className = 'calendar-title';
+      title.textContent = monthLabel(year, month);
+
+      const nextBtn = document.createElement('button');
+      nextBtn.type = 'button';
+      nextBtn.className = 'calendar-nav';
+      nextBtn.textContent = '›';
+      nextBtn.addEventListener('click', function() {
+        calendarMonth = { year: month === 11 ? year + 1 : year, month: month === 11 ? 0 : month + 1 };
+        render();
+      });
+
+      header.appendChild(prevBtn);
+      header.appendChild(title);
+      header.appendChild(nextBtn);
+      wrapper.appendChild(header);
+
+      const grid = document.createElement('div');
+      grid.className = 'calendar-grid';
+
+      weekdays.forEach(function(day) {
+        const weekday = document.createElement('div');
+        weekday.className = 'calendar-weekday';
+        weekday.textContent = day;
+        grid.appendChild(weekday);
+      });
+
+      for (let i = 0; i < firstWeekday; i += 1) {
+        const empty = document.createElement('div');
+        empty.className = 'calendar-day is-empty';
+        grid.appendChild(empty);
+      }
+
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day';
+        const key = bookingKeyFromParts(year, month, day);
+        const bookings = bookedCounts[key] || 0;
+        const cellDate = new Date(year, month, day);
+        const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+        const isPast = cellDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        if (bookings > 0) {
+          cell.classList.add('is-booked');
+          cell.addEventListener('click', function() {
+            selectedBookingDate = selectedBookingDate === key ? '' : key;
+            render();
+            requestAnimationFrame(function() {
+              const tableWrap = document.getElementById('schedule-table');
+              if (tableWrap) {
+                tableWrap.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+              }
+            });
+          });
+        }
+        if (selectedBookingDate && key === selectedBookingDate) {
+          cell.classList.add('is-selected');
+        }
+        if (isToday) {
+          cell.classList.add('is-today');
+        }
+        if (isPast) {
+          cell.classList.add('is-past');
+        }
+
+        const number = document.createElement('div');
+        number.className = 'calendar-day-num';
+        number.textContent = String(day);
+        cell.appendChild(number);
+
+        // Removed booking count text as per requirement
+
+        grid.appendChild(cell);
+      }
+
+      wrapper.appendChild(grid);
+
+      const legend = document.createElement('div');
+      legend.className = 'calendar-legend';
+      const swatch = document.createElement('span');
+      swatch.className = 'calendar-legend-swatch';
+      legend.appendChild(swatch);
+      const legendText = document.createElement('span');
+      legendText.textContent = 'Booked dates';
+      legend.appendChild(legendText);
+      wrapper.appendChild(legend);
+
+      return wrapper;
+    }
+
     function render() {
       const search = searchInput.value.trim().toLowerCase();
       const selectedLocation = locationFilter.value;
@@ -537,7 +863,11 @@
         return;
       }
 
-      contentEl.replaceChildren(buildTable(filtered));
+      if (!calendarMonth) {
+        calendarMonth = getCalendarAnchorMonth(filtered);
+      }
+
+      contentEl.replaceChildren(buildCalendar(filtered), buildTable(filtered));
     }
 
     async function loadData() {
@@ -550,8 +880,14 @@
           throw new Error('The sheet loaded but no valid dated rows were parsed.');
         }
         data = liveRows;
+        if (!calendarMonth) {
+          calendarMonth = getCalendarAnchorMonth(liveRows);
+        }
       } catch (error) {
         data = fallbackRows;
+        if (!calendarMonth) {
+          calendarMonth = getCalendarAnchorMonth(fallbackRows);
+        }
         showNotice('Live Google Sheet data could not be loaded, so backup data is being shown instead. ' + error.message);
       }
       populateLocations();
@@ -587,8 +923,16 @@
       console.assert(rowsFromCsv(sampleCsv9)[0].players === 'AD, NMD, Sheldon, Rohit', 'Four separate player columns should combine correctly.');
       console.assert(rowsFromCsv(sampleCsv5).length === 0, 'Rows without dates should be excluded.');
       console.assert(rowsFromCsv(sampleCsv6).length === 0, 'Rows with invalid date values should be excluded.');
+      console.assert(bookingKeyFromDateString('18/04/2026') === '2026-04-18', 'Booking keys should be generated from sheet dates.');
+      console.assert(getBookedDateCounts([{ date: '18/04/2026' }, { date: '18/04/2026' }, { date: '19/04/2026' }])['2026-04-18'] === 2, 'Booked date counts should aggregate repeated dates.');
       console.assert(buildTable([{ day: 'Sat', date: '18/04/2026', start: '06:30', end: '08:30', duration: '120', location: 'Wadala', court: '3', players: 'AD, NMD, Sheldon, Rohit' }]).querySelectorAll('tbody tr').length === 1, 'Table builder should render one row.');
       console.assert(buildTable([{ day: 'Sat', date: '18/04/2026', start: '06:30', end: '08:30', duration: '120', location: 'Wadala', court: '3', players: 'AD, NMD, Sheldon, Rohit' }]).querySelectorAll('thead th').length === 7, 'Table should render 7 columns including a single Players column.');
+      calendarMonth = { year: 2026, month: 3 };
+      console.assert(buildCalendar([{ date: '18/04/2026', start: '06:30' }, { date: '19/04/2026', start: '20:00' }]).querySelectorAll('.calendar-day.is-booked').length >= 2, 'Calendar should highlight booked dates.');
+      selectedBookingDate = '2026-04-18';
+      console.assert(buildTable([{ day: 'Sat', date: '18/04/2026', start: '06:30', end: '08:30', duration: '120', location: 'Wadala', court: '3', players: 'AD, NMD, Sheldon, Rohit' }]).querySelectorAll('tr.is-selected').length === 1, 'Selected booking date should highlight matching table rows.');
+      selectedBookingDate = '';
+      calendarMonth = null;
     }
 
     searchInput.addEventListener('input', render);
