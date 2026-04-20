@@ -36,7 +36,7 @@
       content: '';
       position: fixed;
       inset: 0;
-      background: linear-gradient(rgba(6,18,20,0.65), rgba(6,18,20,0.65));
+      background: linear-gradient(rgba(6,18,20,0.42), rgba(6,18,20,0.42));
       backdrop-filter: blur(2px);
       pointer-events: none;
       z-index: 0;
@@ -69,7 +69,7 @@
       border-radius: 10px;
       border: 1px solid var(--border);
       background: rgba(26, 35, 69, 0.7);
-      backdrop-filter: blur(6px);
+      backdrop-filter: blur(4px);
       color: var(--text);
       min-width: 0;
     }
@@ -96,8 +96,8 @@
       overflow-x: auto;
       border: 1px solid rgba(255,255,255,0.15);
       border-radius: 14px;
-      background: rgba(18, 25, 51, 0.25); /* more transparent */
-      backdrop-filter: blur(12px) saturate(130%);
+      background: rgba(10, 16, 32, 0.14);
+      backdrop-filter: blur(8px) saturate(120%);
       box-shadow: 0 10px 40px rgba(0,0,0,0.35);
       width: fit-content;
       max-width: 100%;
@@ -117,13 +117,13 @@
       text-align: left;
       vertical-align: top;
       white-space: nowrap;
-      background: rgba(255,255,255,0.015); /* subtle translucency per row */
+      background: rgba(255,255,255,0.005);
     }
 
     th {
       position: sticky;
       top: 0;
-      background: rgba(26, 35, 69, 0.4); /* translucent header */
+      background: rgba(12, 20, 38, 0.18);
       color: var(--muted);
       font-size: 13px;
       text-transform: uppercase;
@@ -133,14 +133,14 @@
     }
 
     tr:hover td {
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.025);
     }
 
     .loading, .empty {
       padding: 20px;
       text-align: center;
       color: var(--muted);
-      background: rgba(18, 25, 51, 0.92);
+      background: rgba(18, 25, 51, 0.55);
       border-radius: 10px;
       border: 1px solid var(--border);
       width: fit-content;
