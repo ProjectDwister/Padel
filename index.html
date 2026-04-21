@@ -1196,6 +1196,104 @@ table td:last-child, table th:last-child { text-align:left !important; }
   display: none !important;
 }
 
+
+/* Combined-column table tweaks */
+.availability-col,
+.availability-cell{
+  width: 40px;
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+.availability-icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  line-height: 1;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+@media (max-width: 700px){
+  .availability-col,
+  .availability-cell{
+    width: 34px;
+  }
+  .availability-icon{
+    width: 18px;
+    height: 18px;
+    font-size: 0.8rem;
+  }
+}
+
+
+/* Make icon column thinner and tighter to Day column */
+.availability-col,
+.availability-cell{
+  width: 20px !important;
+  padding: 4px 4px !important;
+}
+
+.availability-icon{
+  width: 16px;
+  height: 16px;
+  font-size: 0.75rem;
+}
+
+.table-wrap td:first-child,
+.table-wrap th:first-child{
+  padding-right: 4px !important;
+}
+
+.table-wrap td:nth-child(2),
+.table-wrap th:nth-child(2){
+  padding-left: 4px !important;
+}
+
+/* Sticky headers + smaller mobile header sizing */
+th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+@media (max-width: 700px) {
+  th {
+    font-size: 11px !important;
+    padding: 8px 8px !important;
+    letter-spacing: 0.02em !important;
+  }
+}
+
+/* Center align all headers */
+th {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+/* Force Players header center */
+th:last-child {
+  text-align: center !important;
+}
+
+/* Keep Players data left, but center only the Players header */
+table th:last-child,
+thead th:last-child,
+.table-wrap thead th:last-child {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+table td:last-child,
+tbody td:last-child,
+.table-wrap tbody td:last-child {
+  text-align: left !important;
+}
 </style>
 </head>
 <body>
@@ -1618,6 +1716,22 @@ table td:last-child, table th:last-child { text-align:left !important; }
         .join(', ');
     }
 
+    function countPlayers(playersValue) {
+      const raw = String(playersValue || '').trim();
+      if (!raw) {
+        return 0;
+      }
+      return raw
+        .split(/[,+]/)
+        .map(function(part) { return String(part || '').trim(); })
+        .filter(Boolean)
+        .length;
+    }
+
+    function hasLessThanFourPlayers(item) {
+      return countPlayers(item.players) < 4;
+    }
+
     function rowsFromCsv(text) {
       const rows = parseCSV(text);
       if (!rows.length) {
@@ -1700,18 +1814,12 @@ table td:last-child, table th:last-child { text-align:left !important; }
       const thead = document.createElement('thead');
       const tbody = document.createElement('tbody');
       const headerRow = document.createElement('tr');
-      const headers = ['Day', 'Date', 'Time', 'Duration', 'Location', 'Court', 'Players'];
+      const headers = ['', 'Day', 'Date', 'Time', 'Location', 'Players'];
 
       headers.forEach(function(label) {
         const th = document.createElement('th');
-        if (label === 'Duration') {
-          th.className = 'duration-col';
-        }
-        if (label === 'Location') {
-          th.className = 'location-col';
-        }
-        if (label === 'Court') {
-          th.className = 'court-col';
+        if (label === '') {
+          th.className = 'availability-col';
         }
         th.textContent = label;
         headerRow.appendChild(th);
@@ -1726,6 +1834,17 @@ table td:last-child, table th:last-child { text-align:left !important; }
           tr.classList.add('is-selected');
         }
 
+        const availabilityTd = document.createElement('td');
+        availabilityTd.className = 'availability-cell';
+        if (hasLessThanFourPlayers(item)) {
+          const icon = document.createElement('span');
+          icon.className = 'availability-icon';
+          icon.textContent = '⚠';
+          icon.title = 'Less than 4 players';
+          availabilityTd.appendChild(icon);
+        }
+        tr.appendChild(availabilityTd);
+
         const dayTd = document.createElement('td');
         dayTd.textContent = item.day || '';
         tr.appendChild(dayTd);
@@ -1737,23 +1856,16 @@ table td:last-child, table th:last-child { text-align:left !important; }
         const timeTd = document.createElement('td');
         const start = item.start || '';
         const end = item.end || '';
-        timeTd.textContent = start && end ? start + ' - ' + end : (start || end);
+        const timeText = start && end ? start + ' - ' + end : (start || end);
+        const durationText = item.duration ? ' (' + item.duration + ')' : '';
+        timeTd.textContent = timeText + durationText;
         tr.appendChild(timeTd);
 
-        const durationTd = document.createElement('td');
-        durationTd.className = 'duration-cell';
-        durationTd.textContent = item.duration || '';
-        tr.appendChild(durationTd);
-
-        const locationTd = document.createElement('td');
-        locationTd.className = 'location-cell';
-        locationTd.textContent = item.location || '';
-        tr.appendChild(locationTd);
-
-        const courtTd = document.createElement('td');
-        courtTd.className = 'court-cell';
-        courtTd.textContent = item.court || '';
-        tr.appendChild(courtTd);
+        const locationCourtTd = document.createElement('td');
+        const locationText = item.location || '';
+        const courtText = item.court ? ' # ' + item.court : '';
+        locationCourtTd.textContent = locationText + courtText;
+        tr.appendChild(locationCourtTd);
 
         const playersTd = document.createElement('td');
         playersTd.textContent = item.players || '--';
